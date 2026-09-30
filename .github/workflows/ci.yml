@@ -160,15 +160,15 @@ jobs:
               - "bun.lock"
               - ".github/workflows/ci.yml"
             edit_accuracy:
-              - "packages/studio/src/components/editor/**"
-              - "packages/studio/src/components/nle/**"
-              - "packages/studio/src/hooks/**"
-              - "packages/studio/src/utils/**"
-              - "packages/studio/src/player/**"
-              - "packages/studio/src/webmcp/**"
+              - "packages/studio/src/**"
               - "packages/studio-server/src/**"
               - "packages/core/src/**"
-              - "packages/cli/src/server/**"
+              - "packages/core/scripts/**"
+              - "packages/cli/src/**"
+              - "packages/player/src/**"
+              - "packages/parsers/src/**"
+              - "packages/producer/src/**"
+              - "packages/engine/src/**"
               - "packages/studio/tests/e2e/edit-accuracy/**"
               - "bun.lock"
               - ".github/workflows/ci.yml"
@@ -965,6 +965,8 @@ jobs:
           node-version: 22
       - uses: ./.github/actions/prepare-ffmpeg-bin
       - run: bash scripts/ci/install-workspace-dependencies.sh
+      # The render check imports the producer's source, which needs core's generated runtime.
+      - run: bun run --cwd packages/core build
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: edit-accuracy-cli
