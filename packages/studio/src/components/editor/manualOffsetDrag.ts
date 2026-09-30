@@ -7,10 +7,13 @@ import {
   clearStudioPathOffset,
   endStudioManualEditGesture,
   readAppliedStudioPathOffset,
+  readStudioRotation,
   restoreStudioPathOffset,
+  restoreStudioRotation,
+  type StudioRotationSnapshot,
   type StudioPathOffsetSnapshot,
 } from "./manualEdits";
-import { computeDraggedGsapPosition } from "../../hooks/draggedGsapPosition";
+import { computeDraggedGsapPosition, readCssRotation } from "../../hooks/draggedGsapPosition";
 
 interface OffsetDragGsap {
   set: (el: Element, vars: Record<string, number | string>) => void;
@@ -51,25 +54,34 @@ function applyOffsetDragDraftViaGsap(
   return true;
 }
 
-/**
- * Live rotation preview through the GSAP channel — the SAME channel the commit
- * lands in (a `tl.set`/keyframe rotation), mirroring `applyOffsetDragDraftViaGsap`.
- * GSAP owns the transform rotation, so neutralize the CSS `rotate` longhand to keep
- * the two channels from composing. `angle` is the absolute target rotation. Returns
- * false when gsap is unavailable (caller falls back to the CSS draft).
- */
-export function applyRotationDraftViaGsap(element: HTMLElement, angle: number): boolean {
+// The rotation draft shows the absolute angle the commit writes: GSAP's rotation, or without GSAP a
+// CSS `rotate` of the angle less what `scale` and `transform` already turn.
+export function applyRotationDraft(element: HTMLElement, angle: number): void {
   const gsap = getOffsetDragGsap(element);
-  if (!gsap) return false;
-  element.style.setProperty("rotate", "none");
-  gsap.set(element, { rotation: angle });
-  return true;
+  element.style.setProperty(
+    "rotate",
+    gsap ? "none" : `${angle - readCssRotation(element, false)}deg`,
+  );
+  gsap?.set(element, { rotation: angle });
 }
 
-/** Current GSAP transform rotation — the single-source rotation base. 0 if gsap is unavailable. */
-export function readGsapRotation(element: HTMLElement): number {
+/** Back to the gesture start: the CSS snapshot, and GSAP's rotation without the legacy var. */
+export function restoreRotationDraft(
+  element: HTMLElement,
+  angle: number,
+  snapshot: StudioRotationSnapshot,
+): void {
+  getOffsetDragGsap(element)?.set(element, {
+    rotation: angle - (Number.parseFloat(snapshot.studioRotation) || 0),
+  });
+  restoreStudioRotation(element, snapshot);
+}
+
+/** The angle a rotate gesture starts from, as the element shows it. */
+export function readRotationBase(element: HTMLElement): number {
   const gsap = getOffsetDragGsap(element);
-  return gsap ? Number(gsap.getProperty(element, "rotation")) || 0 : 0;
+  if (!gsap) return readCssRotation(element);
+  return Number(gsap.getProperty(element, "rotation")) + readStudioRotation(element).angle;
 }
 
 const DEFAULT_OFFSET_PROBE_PX = 100;

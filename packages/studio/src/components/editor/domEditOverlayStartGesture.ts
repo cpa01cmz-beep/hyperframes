@@ -6,7 +6,7 @@ import { readElementGsapNumber } from "../../utils/elementGsap";
 import { type DomEditSelection } from "./domEditing";
 import {
   createManualOffsetDragMember,
-  readGsapRotation,
+  readRotationBase,
   restoreManualOffsetDragMembers,
   type ManualOffsetDragMember,
 } from "./manualOffsetDrag";
@@ -16,7 +16,6 @@ import {
   captureStudioPathOffset,
   captureStudioRotation,
   readStudioBoxSize,
-  readStudioRotation,
 } from "./manualEdits";
 import {
   type OverlayRect,
@@ -151,10 +150,10 @@ export function startGesture(
     return false;
 
   const size = readStudioBoxSize(sel.element);
-  // Single-source rotation base = the live GSAP transform rotation plus any legacy
-  // `--hf-studio-rotation` CSS var (old projects), so a rotate gesture starts from the
-  // element's actual visual angle and commits an absolute angle to the timeline.
-  const rotation = { angle: readGsapRotation(sel.element) + readStudioRotation(sel.element).angle };
+  // Single-source rotation base: GSAP's rotation plus any legacy `--hf-studio-rotation`, or
+  // without GSAP the CSS fold, so a rotate gesture starts from the element's visual angle
+  // and commits an absolute angle to the timeline.
+  const rotation = { angle: readRotationBase(sel.element) };
   // The draft writes CSS width/height, so the resize base must be the CSS
   // layout size. offsetWidth/Height are transform-free; the overlay-rect
   // fallback (rect / editScale) includes the element's own GSAP scale and

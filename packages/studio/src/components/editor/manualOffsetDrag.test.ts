@@ -4,6 +4,8 @@ import {
   applyManualOffsetDragCommit,
   resumeGsapTimelines,
   applyManualOffsetDragDraft,
+  applyRotationDraft,
+  readRotationBase,
   applyManualOffsetDragMatrix,
   createManualOffsetDragMember,
   endManualOffsetDragMembers,
@@ -564,5 +566,39 @@ describe("resumeGsapTimelines", () => {
     const element = window.document.createElement("div");
     window.document.body.append(element);
     expect(() => resumeGsapTimelines(element)).not.toThrow();
+  });
+});
+
+describe("rotate in a composition without GSAP", () => {
+  it("starts from the authored CSS rotation and drafts the absolute angle the commit writes", () => {
+    const window = new Window();
+    window.document.head.innerHTML = "<style>#title { rotate: 30deg; }</style>";
+    const element = window.document.createElement("h1");
+    element.id = "title";
+    window.document.body.append(element);
+    const base = readRotationBase(element);
+    expect(base).toBeCloseTo(30);
+    applyRotationDraft(element, 55);
+    expect(element.style.getPropertyValue("rotate")).toBe("55deg");
+  });
+
+  it("drafts only the part of the angle the CSS rotate owns, leaving transform and scale theirs", () => {
+    const cases: Array<[string, number, number]> = [
+      ["transform: rotate(30deg);", 30, 25],
+      ["rotate: 20deg; transform: rotate(10deg);", 30, 45],
+      ["scale: -1 1;", 180, 25],
+      ["transform: scaleX(-1);", 180, 25],
+    ];
+    for (const [css, base, drafted] of cases) {
+      const window = new Window();
+      window.document.head.innerHTML = `<style>#title { ${css} }</style>`;
+      const element = window.document.createElement("h1");
+      element.id = "title";
+      window.document.body.append(element);
+      expect({ css, base: readRotationBase(element) }).toEqual({ css, base: expect.closeTo(base) });
+      applyRotationDraft(element, base + 25);
+      const rotate = Number.parseFloat(element.style.getPropertyValue("rotate"));
+      expect({ css, rotate }).toEqual({ css, rotate: expect.closeTo(drafted) });
+    }
   });
 });
