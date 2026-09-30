@@ -169,6 +169,13 @@ jobs:
               - "packages/parsers/src/**"
               - "packages/producer/src/**"
               - "packages/engine/src/**"
+              - "packages/lint/src/**"
+              - "packages/sdk/src/**"
+              - "packages/studio/index.html"
+              - "packages/studio/vite.config.ts"
+              - "packages/studio/public/**"
+              - "packages/cli/scripts/**"
+              - "packages/cli/tsup.config.ts"
               - "packages/studio/tests/e2e/edit-accuracy/**"
               - "bun.lock"
               - ".github/workflows/ci.yml"
@@ -965,7 +972,7 @@ jobs:
           node-version: 22
       - uses: ./.github/actions/prepare-ffmpeg-bin
       - run: bash scripts/ci/install-workspace-dependencies.sh
-      # The render check imports the producer's source, which needs core's generated runtime.
+      # The bench imports producer and engine source, which need core's generated runtime files.
       - run: bun run --cwd packages/core build
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
