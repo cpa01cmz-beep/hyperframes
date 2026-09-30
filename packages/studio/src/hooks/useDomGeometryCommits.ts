@@ -3,7 +3,6 @@ import { getDomEditTargetKey, type DomEditSelection } from "../components/editor
 import {
   applyStudioPathOffset,
   applyStudioBoxSize,
-  applyStudioRotation,
   captureStudioPathOffset,
   captureStudioBoxSize,
   captureStudioRotation,
@@ -19,11 +18,12 @@ import { prepareCropResize } from "../components/editor/cropResize";
 import {
   buildPathOffsetPatches,
   buildBoxSizePatches,
-  buildRotationPatches,
   buildClearPathOffsetPatches,
   buildClearBoxSizePatches,
   buildClearRotationPatches,
 } from "../components/editor/manualEditsDomPatches";
+import { applyCssRotation } from "../components/editor/manualOffsetDrag";
+import { STUDIO_ROTATION_ATTR } from "../components/editor/manualEditsTypes";
 import type { PatchOperation } from "../utils/sourcePatcher";
 import { isElementGsapTargeted } from "./gsapTargetCache";
 
@@ -137,13 +137,20 @@ export function useDomGeometryCommits({
       if (readOnlyPreview) return Promise.resolve();
       const gsapFallback = rejectGsapCssFallback(selection, previewIframeRef, showToast);
       if (gsapFallback) return gsapFallback;
-      const before = captureStudioRotation(selection.element);
-      applyStudioRotation(selection.element, next);
-      return commitPositionPatchToHtml(selection, buildRotationPatches(selection.element), {
+      const { element } = selection;
+      const before = captureStudioRotation(element);
+      // Legacy rotation marks go too, or the seek reapply would put their angle back.
+      const patches: PatchOperation[] = element.hasAttribute(STUDIO_ROTATION_ATTR)
+        ? buildClearRotationPatches(element)
+        : [];
+      if (patches.length) clearStudioRotation(element);
+      applyCssRotation(element, next.angle);
+      patches.push({ type: "inline-style", property: "rotate", value: element.style.getPropertyValue("rotate") });
+      return commitPositionPatchToHtml(selection, patches, {
         label: "Rotate layer",
         coalesceKey: `rotation:${getDomEditTargetKey(selection)}`,
       }).catch((error) => {
-        restoreStudioRotation(selection.element, before);
+        restoreStudioRotation(element, before);
         throw error;
       });
     },

@@ -11,7 +11,9 @@ import {
   readStudioBoxSize,
   readStudioPathOffset,
   readStudioRotation,
+  reapplyPositionEditsAfterSeek,
 } from "../components/editor/manualEdits";
+import { STUDIO_ROTATION_ATTR } from "../components/editor/manualEditsTypes";
 import { useDomGeometryCommits, type UseDomGeometryCommitsParams } from "./useDomGeometryCommits";
 import { DomEditCropHandles } from "../components/editor/DomEditCropHandles";
 import { withInlineLayoutBox } from "./domSelectionTestHarness";
@@ -280,5 +282,40 @@ describe("useDomGeometryCommits resize of a cropped element", () => {
 
     expect(h.onStyleCommit).toHaveBeenCalledWith("clip-path", "inset(0px 110px 0px 0px)");
     h.done();
+  });
+});
+
+describe("useDomGeometryCommits rotation", () => {
+  const commitRotation = async (element: HTMLElement, angle: number) => {
+    document.body.append(element);
+    const commitPositionPatchToHtml = vi
+      .fn<UseDomGeometryCommitsParams["commitPositionPatchToHtml"]>()
+      .mockResolvedValue(undefined);
+    const { commits, unmount } = mountCommits(commitPositionPatchToHtml);
+    const selection = { id: element.id, selector: `#${element.id}`, element };
+    await commits().handleDomRotationCommit(selection as unknown as DomEditSelection, { angle });
+    unmount();
+    return commitPositionPatchToHtml.mock.calls[0]![1];
+  };
+
+  it("saves the element's own rotate, less what its transform turns, with no Studio marks", async () => {
+    const element = document.createElement("div");
+    element.id = "turned";
+    element.style.transform = "rotate(10deg)";
+    const patches = await commitRotation(element, 55);
+    expect(patches).toEqual([{ type: "inline-style", property: "rotate", value: "45deg" }]);
+    expect(element.style.getPropertyValue("rotate")).toBe("45deg");
+    expect(element.hasAttribute(STUDIO_ROTATION_ATTR)).toBe(false);
+  });
+
+  it("drops a legacy Studio rotation, so a seek does not put its angle back", async () => {
+    const element = document.createElement("div");
+    element.id = "legacy";
+    applyStudioRotation(element, { angle: 15 });
+    const patches = await commitRotation(element, 40);
+    expect(patches).toContainEqual({ type: "attribute", property: STUDIO_ROTATION_ATTR, value: null });
+    expect(patches.at(-1)).toEqual({ type: "inline-style", property: "rotate", value: "40deg" });
+    reapplyPositionEditsAfterSeek(document);
+    expect(element.style.getPropertyValue("rotate")).toBe("40deg");
   });
 });

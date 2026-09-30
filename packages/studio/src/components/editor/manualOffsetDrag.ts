@@ -14,6 +14,7 @@ import {
   type StudioPathOffsetSnapshot,
 } from "./manualEdits";
 import { computeDraggedGsapPosition, readCssRotation } from "../../hooks/draggedGsapPosition";
+import { roundTo3 } from "../../utils/rounding";
 
 interface OffsetDragGsap {
   set: (el: Element, vars: Record<string, number | string>) => void;
@@ -54,15 +55,17 @@ function applyOffsetDragDraftViaGsap(
   return true;
 }
 
-// The rotation draft shows the absolute angle the commit writes: GSAP's rotation, or without GSAP a
-// CSS `rotate` of the angle less what `scale` and `transform` already turn.
+/** Without GSAP, the element's own `rotate` that shows `angle`: less what `scale` and `transform` turn. */
+export function applyCssRotation(element: HTMLElement, angle: number): void {
+  element.style.setProperty("rotate", `${roundTo3(angle - readCssRotation(element, false))}deg`);
+}
+
+// The rotation draft shows the absolute angle the commit writes: GSAP's rotation, or the CSS writer's.
 export function applyRotationDraft(element: HTMLElement, angle: number): void {
   const gsap = getOffsetDragGsap(element);
-  element.style.setProperty(
-    "rotate",
-    gsap ? "none" : `${angle - readCssRotation(element, false)}deg`,
-  );
-  gsap?.set(element, { rotation: angle });
+  if (!gsap) return applyCssRotation(element, angle);
+  element.style.setProperty("rotate", "none");
+  gsap.set(element, { rotation: angle });
 }
 
 /** Back to the gesture start: the CSS snapshot, and GSAP's rotation without the legacy var. */
