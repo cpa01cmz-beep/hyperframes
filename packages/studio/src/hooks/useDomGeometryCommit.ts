@@ -13,6 +13,7 @@ import { useGsapCacheVersion } from "./useGsapTweenCache";
 import { createDomEditSaveQueue } from "../utils/domEditSaveQueue";
 import { useDomEditPersist } from "./useDomEditPersist";
 import { useDomEditPositionPatchCommit } from "./useDomEditPositionPatchCommit";
+import { useDomGeometryCommits } from "./useDomGeometryCommits";
 import { useMountEffect } from "./useMountEffect";
 import { stageElementOffset } from "./elementOffsetStager";
 
@@ -47,8 +48,6 @@ export interface DomGeometryCommits {
 
 const noop = () => {};
 const NO_SELECTED_ANIMATIONS: GsapAnimation[] = [];
-// ponytail: unreachable, the GSAP writer always exists so a resize never takes the DOM route.
-const noDomBoxSizeRoute = () => Promise.reject(new Error("Resize has no DOM route here"));
 
 /**
  * Saves canvas moves, resizes and rotations through Studio's own GSAP-aware commits, for a host
@@ -117,6 +116,12 @@ export function useDomGeometryCommit({
       ),
     [commitWithFreshQueue, showToast],
   );
+  const { handleDomBoxSizeCommit } = useDomGeometryCommits({
+    previewIframeRef: iframeRef,
+    showToast,
+    commitPositionPatchToHtml: commitWithFreshQueue,
+    readOnlyPreview: false,
+  });
   const makeFetchFallback = useGsapAnimationFetchFallback(projectId);
   const trackGsapInteractionFailure = useGsapInteractionFailureTelemetry(activeCompPath, showToast);
   const {
@@ -135,7 +140,7 @@ export function useDomGeometryCommit({
     makeFetchFallback,
     trackGsapInteractionFailure,
     stageElementPositionOffset,
-    handleDomBoxSizeCommit: noDomBoxSizeRoute,
+    handleDomBoxSizeCommit,
     commitPositionPatchToHtml: commitWithFreshQueue,
     addGsapAnimation: gsap.addGsapAnimation,
     convertToKeyframes: gsap.convertToKeyframes,

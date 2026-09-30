@@ -11,7 +11,7 @@ import {
   type StudioPathOffsetSnapshot,
 } from "./manualEdits";
 import { computeDraggedGsapPosition } from "../../hooks/draggedGsapPosition";
-import { gsapWritesPosition } from "../../hooks/gsapRuntimeKeyframes";
+import { gsapWritesBox, gsapWritesPosition } from "../../hooks/gsapRuntimeKeyframes";
 import { readTranslatePx, writeTranslatePx } from "./plainTranslate";
 
 interface OffsetDragGsap {
@@ -337,10 +337,11 @@ export function createManualOffsetDragMember(input: {
   selection: DomEditSelection;
   element: HTMLElement;
   rect: ManualOffsetDragRect;
-  /** A move or nudge; a resize's anchor member keeps the legacy offset channel. */
-  gesture?: "drag" | "nudge";
+  /** A move, a nudge, or the anchor that keeps a resize's centre planted. */
+  gesture?: "drag" | "nudge" | "resize";
 }): ManualOffsetDragMemberResult {
-  const plainTranslate = !!input.gesture && !gsapWritesPosition(input.element);
+  const gsapOwns = input.gesture === "resize" ? gsapWritesBox : gsapWritesPosition;
+  const plainTranslate = !!input.gesture && !gsapOwns(input.element);
   // Base the drag on the offset ACTUALLY applied, never the raw (possibly dormant)
   // var — see readAppliedStudioPathOffset. This keeps the commit purely relative
   // (applied + delta) so a stale offset can't fling the element off-screen.

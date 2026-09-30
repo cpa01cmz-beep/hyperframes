@@ -33,7 +33,11 @@ import { setElementGsapPosition } from "../utils/elementGsap";
 import { logResize, logResizeSettle } from "../utils/resizeDebug";
 import type { DomEditGroupPathOffsetCommit } from "../components/editor/DomEditOverlay";
 import { runGestureTransaction } from "./gestureTransaction";
-import { gsapWritesPosition, hasNonHoldTweenForElement } from "./gsapRuntimeKeyframes";
+import {
+  gsapWritesBox,
+  gsapWritesPosition,
+  hasNonHoldTweenForElement,
+} from "./gsapRuntimeKeyframes";
 import { translatePatch } from "../components/editor/plainTranslate";
 import { assertGsapEditPersisted, saveMove } from "./gsapEditOutcome";
 import type { GsapAnimationFetchOptions } from "./useGsapAnimationFetchFallback";
@@ -358,6 +362,12 @@ export function useGsapAwareEditing({
       offset?: { x: number; y: number },
       restore: () => void = () => undefined,
     ) => {
+      if (!gsapWritesBox(selection.element)) {
+        return handleDomBoxSizeCommit(selection, next, offset).catch((error: unknown) => {
+          restore();
+          throw error;
+        });
+      }
       let targetAnimations: GsapAnimation[];
       try {
         const ownedAnimations = getGsapAnimationsForSelection(selection);
@@ -451,13 +461,7 @@ export function useGsapAwareEditing({
               throw error;
             }
           }
-          logResize("dom-route", {
-            next,
-            offset: offset ?? null,
-            hadGsapMutation: !!gsapCommitMutation,
-          });
-          logResizeSettle(selection.element, "dom-route");
-          await handleDomBoxSizeCommit(selection, next, offset);
+          throw new Error("Resize of a GSAP-owned box has no GSAP writer");
         },
         afterBufferedCommitsSaved: async () => {
           await anchorMove?.save();

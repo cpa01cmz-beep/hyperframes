@@ -5,6 +5,7 @@
 import { readElementGsapNumber } from "../../utils/elementGsap";
 import { type DomEditSelection } from "./domEditing";
 import {
+  applyManualOffsetDragDraft,
   createManualOffsetDragMember,
   readGsapRotation,
   restoreManualOffsetDragMembers,
@@ -221,11 +222,14 @@ export function startGesture(
         selection: sel,
         element: sel.element,
         rect,
+        gesture: "resize",
       });
       if (result.ok) {
         pathOffsetMember = result.member;
         initialPathOffset = result.member.initialPathOffset;
         manualEditDragToken = result.member.gestureToken;
+        // Hold a % translate as the same px now, so a growing box can't drag it along mid-frame.
+        if (result.member.plainTranslate) applyManualOffsetDragDraft(result.member, 0, 0);
       } else {
         manualEditDragToken = beginStudioManualEditGesture(sel.element);
       }
