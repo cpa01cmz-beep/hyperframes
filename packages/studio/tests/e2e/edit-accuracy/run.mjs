@@ -12,6 +12,7 @@ import puppeteer from "puppeteer-core";
 import { resolveHeadlessShellPath } from "../../../../engine/src/index.ts";
 import { buildGrid, writeFixture } from "./grid.mjs";
 import { killServers, runCase, startServer, stopServer } from "./case.mjs";
+import { runSequence } from "./sequences.mjs";
 import { METRICS, score, writeReport } from "./report.mjs";
 import { renderBox } from "./render.mjs";
 import { aabb, boxDistance } from "./geometry.mjs";
@@ -102,7 +103,7 @@ async function runOne(spec, browser, decoder, port) {
   let server;
   try {
     server = await startServer(opt.cli, dir, port, log, join(root, "home"));
-    const measured = await runCase({
+    const measured = await (spec.steps ? runSequence : runCase)({
       browser,
       spec,
       dir,
